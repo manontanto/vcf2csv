@@ -1,52 +1,64 @@
 #!/usr/bin/env python3
-# vcf2csv - From vCard3 to CSV
+# vcf2csv - From VCard3 to CSV
 #
 # manontanto
 #
 import vobject
 import csv
-import tkinter as tk
-import tkinter.filedialog as tkdialog
+from tkinter import filedialog as tkdialog
 import os
 import sys
 
-root = tk.Tk()
+root = tkdialog.Tk()
 root.withdraw()
 
-read_fileName = tkdialog.askopenfilename(filetypes=[('vcf files', '*.vcf')],\
-        initialdir=os.getcwd())
-if not read_fileName:
-    sys.exit() # null read_fileName
-with open(read_fileName, 'r') as vcf_file:
+def readVcf(vd):
+    contents = []
+    for vcard in vobject.readComponents(vd):
+        family = vcard.n.value.family
+        given = vcard.n.value.given
+        suffix = vcard.n.value.suffix
+        seiyomi = ''
+        if hasattr(vcard, 'x_phonetic_last_name'):
+            seiyomi = vcard.x_phonetic_last_name.value
+#        nayomi = vcard.x_phonetic_first_name.value # <======?????
+        tel = ''
+        if hasattr(vcard, 'tel'):
+            tel = vcard.tel.value
+        email = ''
+        if hasattr(vcard, 'email'):
+            email = vcard.email.value
+        pcode = ''
+        adr = ''
+        if hasattr(vcard, 'adr'):
+            pcode = vcard.adr.value.code
+            adr = vcard.adr.value.region + vcard.adr.value.city \
+                    + vcard.adr.value.street + vcard.adr.value.extended \
+                    + vcard.adr.value.box
+        renmei = ''
+        if hasattr(vcard, 'x_abrelatednames'): 
+            renmei = vcard.x_abrelatednames.value
+
+        contents.append( [family, given, suffix, seiyomi,\
+                tel, email, pcode, adr, renmei ] )
+    return contents
+
+def main():
+    read_fileName = tkdialog.askopenfilename(filetypes=[('vcf files', '*.vcf')],\
+            initialdir=os.getcwd())
+    if not read_fileName:
+        sys.exit() # null read_fileName
+    with open(read_fileName, 'r') as vcf_file:
+        vcfdata = vcf_file.read()
+
     csv_fileName = tkdialog.asksaveasfilename(defaultextension='.csv',\
-        initialdir=os.getcwd(), initialfile='myAddressList', title='Save as(.csv)')
+            initialdir=os.getcwd(), title='Save as(.csv)')
     if not csv_fileName:
         sys.exit() # null csv_fileName
     with open(csv_fileName, 'w', encoding='utf_8', newline='') as output_file:
-        output_writer = csv.writer(output_file)
-        for vcard in vobject.readComponents(vcf_file):
-            family = vcard.n.value.family
-            given = vcard.n.value.given
-            suffix = vcard.n.value.suffix
-            seiyomi = ''
-            if hasattr(vcard, 'x_phonetic_last_name'):
-                seiyomi = vcard.x_phonetic_last_name.value
-            tel = ''
-            if hasattr(vcard, 'tel'):
-                tel = vcard.tel.value
-            email = ''
-            if hasattr(vcard, 'email'):
-                email = vcard.email.value
-            pcode = ''
-            adr = ''
-            if hasattr(vcard, 'adr'):
-                pcode = vcard.adr.value.code
-                adr = vcard.adr.value.region + vcard.adr.value.city \
-                + vcard.adr.value.street + vcard.adr.value.extended \
-                + vcard.adr.value.box
-            renmei = ''
-            if hasattr(vcard, 'x_abrelatednames'): 
-                renmei = vcard.x_abrelatednames.value
+        for l in readVcf(vcfdata):
+            output_file.write(",".join(l) + '\n')
 
-            output_writer.writerow([family, given, suffix, seiyomi,\
-             tel, email, pcode, adr, renmei])
+if __name__ == '__main__':
+    main()
+
